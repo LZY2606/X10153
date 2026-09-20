@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="panel">
+  <h2>上传字体</h2>
+  <p class="muted">系统会先保存原始字节，再解析 cmap、glyph 依赖、复合组件与 GSUB/GPOS 布局关系。解析失败的字体整份进入隔离，不会产生半棵依赖树。</p>
+  <form action="{{ url_for('upload') }}" method="post" enctype="multipart/form-data">
+    <input type="file" name="font" accept=".ttf,.otf" required>
+    <button class="btn" type="submit">上传并解析</button>
+  </form>
+</div>
+
+<div class="grid2">
+  <div class="panel">
+    <h2>字体（{{ fonts|length }}）</h2>
+    {% if fonts %}
+    <table>
+      <thead><tr><th>文件</th><th>状态</th><th>Glyph 数</th><th></th></tr></thead>
+      <tbody>
+      {% for f in fonts %}
+        <tr>
+          <td><div>{{ f.filename }}</div><div class="muted mono">{{ f.sha256[:12] }} · {{ f.size }} B</div></td>
+          <td>
+            {% if f.quarantined %}<span class="tag bad">已隔离</span>{% else %}
+            <span class="tag ok">正常</span>
+            <span class="tag">{{ f.flavor }}</span>{% endif %}
+          </td>
+          <td>{{ f.num_glyphs if not f.quarantined else '—' }}</td>
+          <td><a href="{{ url_for('font_detail', sha=f.sha256) }}">详情</a></td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}<p class="muted">还没有字体。</p>{% endif %}
+  </div>
+
+  <div class="panel">
+    <h2>子集计划（{{ plans|length }}）</h2>
+    {% if plans %}
+    <table>
+      <thead><tr><th>计划</th><th>字体</th><th>策略</th><th>Glyph</th><th></th></tr></thead>
+      <tbody>
+      {% for p in plans %}
+        <tr>
+          <td class="mono">{{ p.plan_id }}<div class="muted">spec {{ p.spec_version }} · 样本 {{ p.num_samples }}</div></td>
+          <td class="mono small">{{ p.font_filename }}<br>{{ p.font_sha256[:10] }}</td>
+          <td><span class="tag">{{ p.closure }}</span></td>
+          <td>{{ p.stats.num_candidate_glyphs }}</td>
+          <td><a href="{{ url_for('plan_detail', plan_id=p.plan_id) }}">查看</a></td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}<p class="muted">还没有计划。</p>{% endif %}
+  </div>
+</div>
+{% endblock %}

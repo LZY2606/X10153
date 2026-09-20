@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="panel">
+  <h2>对比两个子集计划</h2>
+  <form method="post">
+    <div class="grid2">
+      <select name="plan_a">{% for p in plans %}<option value="{{ p.plan_id }}">{{ p.plan_id }} · {{ p.font_filename }}</option>{% endfor %}</select>
+      <select name="plan_b">{% for p in plans %}<option value="{{ p.plan_id }}">{{ p.plan_id }} · {{ p.font_filename }}</option>{% endfor %}</select>
+    </div>
+    <p style="margin-top:10px"><button class="btn" type="submit">对比</button></p>
+  </form>
+</div>
+
+{% if result %}
+<div class="panel">
+  <h2>结果：<span class="mono">{{ result.plan_a }}</span> vs <span class="mono">{{ result.plan_b }}</span></h2>
+  <ul class="tight">
+    <li>同一字体：<b>{{ '是' if result.same_font else '否' }}</b></li>
+    <li>参数完全一致：<b>{{ '是' if result.parameters_equal else '否' }}</b>
+      （特性 {{ result.features_a | join(' ') }} / {{ result.features_b | join(' ') }}，策略 {{ result.closure_a }} / {{ result.closure_b }}）</li>
+    <li>样本一致：<b>{{ '是' if result.samples_equal else '否' }}</b></li>
+    <li>glyph 数：A {{ result.counts.a }}，B {{ result.counts.b }}，共享 {{ result.counts.shared }}，仅 A {{ result.counts.only_a }}，仅 B {{ result.counts.only_b }}</li>
+  </ul>
+</div>
+<div class="grid2">
+  <div class="panel">
+    <h2>仅 A 包含</h2>
+    <table><thead><tr><th>GID</th><th>名称</th></tr></thead><tbody>
+    {% for g in result.only_a %}<tr><td class="mono">{{ g.gid }}</td><td class="mono">{{ g.name }}</td></tr>{% endfor %}
+    </tbody></table>
+  </div>
+  <div class="panel">
+    <h2>仅 B 包含</h2>
+    <table><thead><tr><th>GID</th><th>名称</th></tr></thead><tbody>
+    {% for g in result.only_b %}<tr><td class="mono">{{ g.gid }}</td><td class="mono">{{ g.name }}</td></tr>{% endfor %}
+    </tbody></table>
+  </div>
+</div>
+<div class="grid2">
+  <div class="panel"><h2>A 的缺失字符</h2>
+    {% for m in result.missing_a %}<div class="small mono">{{ m.cp_label }} · {{ m.reason }}</div>{% else %}<p class="muted">无</p>{% endfor %}
+  </div>
+  <div class="panel"><h2>B 的缺失字符</h2>
+    {% for m in result.missing_b %}<div class="small mono">{{ m.cp_label }} · {{ m.reason }}</div>{% else %}<p class="muted">无</p>{% endfor %}
+  </div>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,5 @@
+fonttools>=4.40
+flask>=2.2
+
+[test]
+pytest>=7

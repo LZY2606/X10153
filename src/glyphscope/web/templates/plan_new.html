@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="panel">
+  <h2>新建子集计划</h2>
+  <form method="post">
+    <h3>1. 选择字体</h3>
+    {% if fonts %}
+    <select name="font_sha256" required>
+      {% for f in fonts %}
+      <option value="{{ f.sha256 }}" {{ 'selected' if f.sha256 == selected else '' }}>
+        {{ f.filename }} ({{ f.sha256[:12] }})
+      </option>
+      {% endfor %}
+    </select>
+    {% else %}
+      <p class="flash error">还没有可用字体，请先在首页上传。</p>
+    {% endif %}
+
+    <h3>2. 输入文本样本（每行一条，可粘贴多语言文本）</h3>
+    <textarea name="samples" placeholder="例如：&#10;Hello, world!&#10;a&#65025; fi &#128512; &#22823;&#23478;&#22909;&#10;caf&#233; + combining marks"></textarea>
+    <p class="muted">代理平面字符（emoji 等）、variation selector、组合字符都按真实码点处理。</p>
+
+    <h3>3. 保留的布局特性</h3>
+    <div>
+      {% for feat in all_features %}
+      <label class="checkbox">
+        <input type="checkbox" name="features" value="{{ feat }}" {{ 'checked' if feat in default_features else '' }}>
+        <code>{{ feat }}</code>
+      </label>
+      {% endfor %}
+    </div>
+
+    <h3>4. 特性闭合策略</h3>
+    {% for value, label in closure_modes %}
+    <p><label class="checkbox"><input type="radio" name="closure" value="{{ value }}" {{ 'checked' if value == 'reachable' else '' }}> {{ label }}</label></p>
+    {% endfor %}
+
+    <h3>5. 输出方式</h3>
+    <p>
+      <button class="btn ghost" type="submit" name="action" value="plan">只生成计划 JSON</button>
+      <button class="btn" type="submit" name="action" value="export">生成计划并导出子集</button>
+    </p>
+  </form>
+</div>
+{% endblock %}

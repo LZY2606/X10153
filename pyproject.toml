@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "glyphscope"
+version = "1.0.0"
+description = "字形子集检查站：字体 glyph 依赖分析、可复现子集计划与本地预览"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "fonttools>=4.40",
+    "flask>=2.2",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=7"]
+
+[project.scripts]
+glyphscope = "glyphscope.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+glyphscope = ["web/templates/*.html", "web/static/*"]

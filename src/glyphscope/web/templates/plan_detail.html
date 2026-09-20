@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="panel">
+  <h2>计划 <span class="mono">{{ plan.plan_id }}</span>
+    <span class="tag">spec {{ plan.spec_version }}</span>
+    <span class="tag">{{ plan.parameters.closure }}</span>
+  </h2>
+  <p class="mono muted">字体 {{ plan.font.filename }} · {{ plan.font.sha256[:16] }}
+    · 特性 {{ plan.parameters.features | join(' ') }}</p>
+  <div class="pill-row">
+    <span class="tag ok">候选 glyph {{ plan.stats.num_candidate_glyphs }} / {{ plan.stats.num_glyphs_in_font }}</span>
+    <span class="tag {{ 'bad' if plan.stats.num_missing else 'ok' }}">缺失字符 {{ plan.stats.num_missing }}</span>
+    <span class="tag {{ 'warn' if plan.stats.num_notdef_refs else 'ok' }}">映射 .notdef {{ plan.stats.num_notdef_refs }}</span>
+    <span class="tag">布局动作 {{ plan.stats.num_layout_actions }}</span>
+    <span class="tag warn">闭合补入 {{ plan.stats.num_closure_added }}</span>
+  </div>
+  <p style="margin-top:12px">
+    <a class="btn" href="{{ url_for('plan_graph', plan_id=plan.plan_id) }}">查看字符→glyph 关系图</a>
+    <a class="btn ghost" href="{{ url_for('plan_json', plan_id=plan.plan_id) }}">下载计划 JSON</a>
+    {% if report %}
+      <a class="btn secondary" href="{{ url_for('plan_download', plan_id=plan.plan_id) }}">下载子集 {{ report.suffix }}</a>
+    {% else %}
+      <form method="post" action="{{ url_for('plan_export', plan_id=plan.plan_id) }}" style="display:inline">
+        <button class="btn secondary" type="submit">导出子集</button>
+      </form>
+    {% endif %}
+  </p>
+</div>
+
+{% if report %}
+<div class="panel">
+  <h2>导出结果</h2>
+  <p>计划 {{ report.planned_glyph_count }} 个 glyph，实际导出 {{ report.exported_glyph_count }} 个。
+     {% if report.license.all_preserved %}<span class="tag ok">许可证元数据完整保留</span>
+     {% else %}<span class="tag bad">许可证字段核对异常</span>{% endif %}
+  </p>
+  {% if report.subsetter_added %}
+  <p class="muted">subsetter 为保证布局完整额外补入：
+    <span class="mono">{{ report.subsetter_added | join(', ') }}</span></p>
+  {% endif %}
+  {% if report.planned_but_absent %}
+  <p class="flash error">计划 glyph 在导出中缺失：<span class="mono">{{ report.planned_but_absent | join(', ') }}</span></p>
+  {% endif %}
+</div>
+{% endif %}
+
+<div class="panel">
+  <h2>输入文本与本地预览</h2>
+  <p class="muted">蓝框表示经过布局替代/连字产生的 glyph；红框“缺”表示 cmap 无映射；虚线黄框表示映射到 .notdef。预览只用于检查覆盖与替代关系，不追求与系统渲染像素一致。</p>
+  {% for sample in plan.samples %}
+    <h3 class="mono">样本 {{ loop.index }} · {{ sample.id }}</h3>
+    <p class="small">{{ sample.text }}</p>
+    {% if previews and loop.index0 < previews|length %}{{ previews[loop.index0] | safe }}{% endif %}
+  {% endfor %}
+</div>
+
+<div class="panel">
+  <h2>候选 glyph 与溯源（按 GID 确定性排序）</h2>
+  <table>
+    <thead><tr><th>GID</th><th>名称</th><th>组件</th><th>溯源</th></tr></thead>
+    <tbody>
+    {% for g in plan.glyphs %}
+      <tr>
+        <td class="mono">{{ g.gid }}{% if g.is_notdef %} <span class="tag warn">.notdef</span>{% endif %}</td>
+        <td class="mono">{{ g.name }}</td>
+        <td class="mono small">{{ g.components | join(', ') }}</td>
+        <td>
+          {% for o in g.origins %}
+            <div class="small" style="margin:2px 0">
+              <span class="origin-kind {{ o.kind }}">{{ o.kind }}</span>
+              {% if o.kind in ('character','combining') %}
+                {{ o.cp_label }}{% if o.sample_id %} <span class="muted">@{{ o.sample_id[:8] }}</span>{% endif %}
+              {% elif o.kind == 'mapped_notdef' %}
+                {{ o.cp_label }} 映射到 GID 0
+              {% elif o.kind == 'variation' %}
+                {{ o.cp_label }} + {{ o.variation_selector }}
+                {% if o.variant_default_uvs %}<span class="tag warn">默认 UVS 回退</span>{% endif %}
+              {% elif o.kind == 'layout' %}
+                <code>{{ o.feature }}</code> / <code>{{ o.rule }}</code>
+                输入 [{{ o.input_names | join('+') }}] → <b>{{ plan.glyphs | selectattr('gid','equalto',g.gid) | map(attribute='name') | join }}</b>
+                <span class="muted">lookup #{{ o.lookup_index }}</span>
+              {% elif o.kind == 'component' %}
+                复合组件，父 glyph <span class="mono">#{{ o.parent_gid }} {{ o.parent_name }}</span>
+                路径 <span class="mono">{{ o.via | join(' → ') }}</span>
+              {% elif o.kind == 'closure' %}
+                策略 {{ o.policy }} 经 <code>{{ o.feature }}</code> 的 {{ o.lookup_type }} 规则纳入
+                {% if o.source_gid is not none %}（源自 #{{ o.source_gid }}）{% endif %}
+              {% elif o.kind == 'required' %}
+                {{ o.reason }}
+              {% endif %}
+            </div>
+          {% endfor %}
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="grid2">
+  <div class="panel">
+    <h2>缺失映射（cmap 无此字符）</h2>
+    {% if plan.missing %}
+    <table><thead><tr><th>码点</th><th>样本</th><th>原因</th></tr></thead><tbody>
+    {% for m in plan.missing %}
+      <tr><td class="mono">{{ m.cp_label }}{% if m.variation_selector %} {{ m.variation_selector }}{% endif %}</td>
+      <td class="mono small">{{ m.sample_id[:8] }}</td><td class="small">{{ m.reason }}</td></tr>
+    {% endfor %}
+    </tbody></table>
+    {% else %}<p class="muted">无缺失字符。</p>{% endif %}
+  </div>
+  <div class="panel">
+    <h2>映射到 .notdef</h2>
+    {% if plan.notdef_refs %}
+    <table><thead><tr><th>码点</th><th>样本</th><th>原因</th></tr></thead><tbody>
+    {% for m in plan.notdef_refs %}
+      <tr><td class="mono">{{ m.cp_label }}</td><td class="mono small">{{ m.sample_id[:8] }}</td><td class="small">{{ m.reason }}</td></tr>
+    {% endfor %}
+    </tbody></table>
+    {% else %}<p class="muted">没有映射到 GID 0 的字符（与左侧“缺失”严格区分）。</p>{% endif %}
+  </div>
+</div>
+
+<div class="panel">
+  <h2>布局替代动作</h2>
+  {% if plan.layout_actions %}
+  <table><thead><tr><th>特性</th><th>lookup</th><th>输入 glyph</th><th>输出 glyph</th><th>来源码点</th></tr></thead><tbody>
+  {% for a in plan.layout_actions %}
+    <tr>
+      <td><code>{{ a.feature }}</code></td>
+      <td class="mono">#{{ a.lookup_index }} {{ a.lookup_type }} / {{ a.detail.rule }}</td>
+      <td class="mono small">{{ a.input_names | join(' + ') }}</td>
+      <td class="mono small"><b>{{ a.output_names | join(', ') }}</b></td>
+      <td class="mono small">{{ a.cps | map('string') | join(' ') }}</td>
+    </tr>
+  {% endfor %}
+  </tbody></table>
+  {% else %}<p class="muted">该计划没有触发布局替代。</p>{% endif %}
+</div>
+{% endblock %}

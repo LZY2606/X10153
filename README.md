@@ -1,0 +1,97 @@
+# glyphscope — 字形子集检查站
+
+面向字体工程师的离线 glyph 依赖分析与子集计划工具。上传字体与多语言文本样本后，
+系统读取 `cmap`、glyph 依赖、复合组件与 GSUB/GPOS 布局关系，生成**带完整溯源、
+版本化、可复现**的候选 glyph 集，并可导出保留许可证元数据的子集文件。
+
+## 安装与演示
+
+```bash
+python3 -m venv .venv
+.venv/bin/pip install -e '.[test]'
+.venv/bin/pytest -q
+.venv/bin/python -m glyphscope --host 127.0.0.1 --port 5230
+```
+
+打开 http://127.0.0.1:5230 即可看到“字形子集检查站”。
+
+> 注：macOS 系统 Python 3.9 自带 pip 21.2.4，不支持 PEP 660 可编辑安装。
+> 若 `pip install -e` 报 “editable mode currently requires a setuptools-based
+> build”，先执行一次 `.venv/bin/pip install --upgrade pip`（仓库也保留了
+> `setup.py`，可用 `python setup.py develop` 走传统可编辑安装）。
+
+所有字体处理均在本地离线完成（仅依赖 fontTools 与 Flask）。
+数据默认写入工作目录下的 `.glyphscope/`，可用环境变量 `GLYPHSCOPE_HOME` 覆盖。
+
+## 核心概念
+
+- **原始字节优先**：上传文件先按 sha256 内容寻址落盘，再解析。
+- **隔离（quarantine）**：sfnt 目录越界、表 offset 越界、损坏的 cmap/GSUB/GPOS、
+  glyf 复合依赖环等任何解析失败，都会把整份字体标记为隔离；原始字节保留，
+  但不会生成半棵依赖树，也不能导出。
+- **缺失 vs .notdef**：
+  - `missing`：cmap 中没有该码点（或码点+变体选择符）的映射；
+  - `notdef`：映射存在，但落到 GID 0。两者在计划与预览中严格区分。
+- **溯源（origins）**：每个候选 glyph 都记录触发来源：
+  `character` / `variation`（variation selector）/ `combining`（组合字符）/
+  `layout`（GSUB 替代、连字、上下文规则）/ `component`（复合组件传递闭包）/
+  `closure`（特性闭合策略纳入）/ `required`（.notdef 规范保留）。
+- **复合依赖**：glyf 复合 glyph 的组件依赖做传递闭包，DAG 上给出组件路径，
+  并在加载阶段检测环（有环即隔离）。
+- **特性闭合策略**（保留布局特性时，样本未直接触发的相关 glyph）：
+  - `none`：只保留样本直接/经布局到达的 glyph；
+  - `reachable`（默认）：从样本 glyph 出发，沿启用特性的 lookup 静态边
+    可达的替代目标全部纳入，即使文本没有直接触发；
+  - `full`：纳入所保留特性涉及的全部替代目标。
+- **计划版本**：计划 JSON 遵循 `spec_version: 1.0`，`plan_id` 由字体哈希、
+  参数与样本内容指纹决定；改变样本或策略会产生新计划，旧计划原样保留、
+  随时可下载 JSON 重现。
+- **导出**：实际子集由 fontTools subsetter 生成，保留全部 name 记录
+  （含 nameID 0/7/13/14 的版权、商标、许可证与许可证 URL），
+  固定 head 时间戳保证同一计划重复导出字节一致；导出报告会透明列出
+  subsetter 为布局完整性自动补入的 glyph。也可以“只生成计划”不导出。
+
+## 页面
+
+- `/` 上传、字体与计划列表
+- `/fonts/<sha256>` 表摘要、许可证元数据、隔离原因、原始字节下载
+- `/plans/new` 多行文本文本、特性勾选、闭合策略、仅计划/直接导出
+- `/plans/<id>` glyph 溯源表、缺失/.notdef 清单、布局动作、本地 SVG 预览
+- `/plans/<id>/graph` 字符 → glyph → 组件/闭合节点的关系图
+- `/plans/<id>/json`、`/plans/<id>/download` 计划 JSON 与子集下载
+- `/compare` 两个计划的 glyph 集合、参数、缺失字符对比
+
+本地预览不追求与系统渲染像素一致：蓝框表示布局替代/连字产物，红框“缺”表示
+cmap 无映射，黄色虚线框表示映射到 .notdef。
+
+## 测试夹具
+
+`tests/builder.py` 合成一个完全自建、带许可证声明的小型 TTF，覆盖：
+
+- 代理平面 U+1F600（cmap format 12）
+- variation selector U+E0101 的非默认 UVS（cmap format 14）
+- 组合字符 U+0301 与预组合复合 glyph
+- 多层复合链与复合依赖环（二进制 patch 构造）
+- GSUB `liga` 连字与 `calt` 上下文替代
+- 越界目录 offset / 越界表 offset / 组件环三类损坏
+
+测试主题覆盖代理平面、variation selector、组合字符、复合依赖环、损坏 offset、
+确定性 glyph 排序、计划版本重现与差异、三种闭合策略、许可证保留、导出确定性、
+隔离阻断与完整 Web 流程。
+
+## 包结构
+
+```
+src/glyphscope/
+  loader.py    sfnt 边界校验、表解析、glyf 复合闭包/环检测、许可证提取
+  segments.py  Unicode 簇切分（VS、组合标记、ZWJ/ZWNJ、代理平面）
+  mapper.py    cmap / format-14 映射，missing vs notdef
+  layout.py    GSUB 模拟（single/multiple/ligature/context/chain/reverse）
+  planner.py   候选 glyph、溯源、闭合策略、版本化计划
+  exporter.py  确定性子集导出、许可证核对
+  preview.py   轮廓 SVG 预览与关系图
+  storage.py   原始字节/计划/导出的内容寻址存储
+  service.py   Web/CLI 编排
+  web/         Flask 页面
+tests/         pytest 与夹具构造器
+```

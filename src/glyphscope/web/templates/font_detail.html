@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="panel">
+  <h2>{{ meta.filename }}
+    {% if meta.quarantined %}<span class="tag bad">已隔离</span>
+    {% else %}<span class="tag ok">正常</span>{% endif %}
+  </h2>
+  <p class="mono muted">sha256 {{ meta.sha256 }} · {{ meta.size }} 字节
+    {% if not meta.quarantined %}· {{ meta.flavor }} · {{ meta.num_glyphs }} glyphs
+    · GSUB {{ '有' if meta.has_gsub else '无' }} · GPOS {{ '有' if meta.has_gpos else '无' }}{% endif %}
+  </p>
+  {% if meta.quarantined %}
+  <div class="flash error">
+    <strong>隔离原因（{{ meta.quarantine_table }}）：</strong>{{ meta.quarantine_reason }}
+  </div>
+  <p class="muted">原始字节已保留，但不能用于生成计划或导出，直到重新上传修复后的字体。</p>
+  {% endif %}
+  <a class="btn" href="{{ url_for('plan_new', font=meta.sha256) }}">用此字体新建计划</a>
+  <a class="btn ghost" href="{{ url_for('font_raw', sha=meta.sha256) }}">下载原始字节</a>
+</div>
+
+{% if not meta.quarantined %}
+<div class="panel">
+  <h2>字体表摘要</h2>
+  <table>
+    <thead><tr><th>表</th><th>offset</th><th>长度</th></tr></thead>
+    <tbody>
+    {% for t in meta.tables %}
+      <tr><td class="mono">{{ t.tag }}</td><td class="mono">{{ t.offset }}</td><td class="mono">{{ t.length }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="panel">
+  <h2>许可证 / 名称元数据</h2>
+  {% if meta.licenses %}
+  <table>
+    <thead><tr><th>字段</th><th>内容</th></tr></thead>
+    <tbody>
+    {% for key, value in meta.licenses.items() %}
+      <tr><td class="mono">{{ key }}</td><td class="small">{{ value }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}<p class="muted">name 表中没有可提取的许可证字段。</p>{% endif %}
+</div>
+{% endif %}
+{% endblock %}

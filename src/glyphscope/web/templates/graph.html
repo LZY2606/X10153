@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block content %}
+{% set pos = {} %}
+{% for n in graph.nodes %}{% set _ = pos.update({n.id: n}) %}{% endfor %}
+<div class="panel">
+  <h2>字符 → glyph 关系图 · <span class="mono">{{ plan.plan_id }}</span></h2>
+  <p class="muted">绿色=Unicode 字符，靛蓝=glyph，橙色=闭合策略节点。
+  边标签：<code>cmap</code> 直接映射、<code>vs</code> 变体选择符、<code>mark</code> 组合字符、
+  <code>layout:特性/规则</code> 替代、<code>component</code> 复合依赖、<code>closure</code> 策略纳入。</p>
+  <svg class="graph-svg" viewBox="0 0 {{ graph.width }} {{ graph.height }}" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <marker id="arrow" markerWidth="9" markerHeight="9" refX="8" refY="3.5" orient="auto">
+        <path d="M0,0 L8,3.5 L0,7 Z" fill="#94a3b8"/>
+      </marker>
+    </defs>
+    {% for e in graph.edges %}
+      {% set s = pos[e.from] %}{% set d = pos[e.to] %}
+      {% if s and d %}
+      {% set x1 = s.x + s.w %}{% set y1 = s.y + s.h / 2 %}
+      {% set x2 = d.x %}{% set y2 = d.y + d.h / 2 %}
+      <line x1="{{ x1 }}" y1="{{ y1 }}" x2="{{ x2 - 2 }}" y2="{{ y2 }}"
+            stroke="#94a3b8" stroke-width="1.4" marker-end="url(#arrow)"/>
+      <text x="{{ (x1 + x2) / 2 }}" y="{{ (y1 + y2) / 2 - 3 }}" font-size="9"
+            fill="#64748b" text-anchor="middle">{{ e.label }}</text>
+      {% endif %}
+    {% endfor %}
+    {% for n in graph.nodes %}
+      {% if n.kind == 'character' %}
+        {% set fill = '#dcfce7' %}{% set stroke = '#16a34a' %}
+      {% elif n.kind == 'policy' %}
+        {% set fill = '#ffedd5' %}{% set stroke = '#c2410c' %}
+      {% else %}
+        {% set fill = '#e0e7ff' %}{% set stroke = '#4f46e5' %}
+      {% endif %}
+      <rect x="{{ n.x }}" y="{{ n.y }}" width="{{ n.w }}" height="{{ n.h }}" rx="8"
+            fill="{{ fill }}" stroke="{{ stroke }}"/>
+      <text x="{{ n.x + 10 }}" y="{{ n.y + 25 }}" font-size="12" fill="#1e293b">{{ n.label }}</text>
+    {% endfor %}
+  </svg>
+</div>
+
+<div class="panel">
+  <h2>边明细（完整标签）</h2>
+  <table><thead><tr><th>起点</th><th>关系</th><th>终点</th></tr></thead><tbody>
+  {% for e in graph.edges %}
+    <tr>
+      <td class="mono small">{{ pos[e.from].label if e.from in pos else e.from }}</td>
+      <td class="mono small">{{ e.label }}</td>
+      <td class="mono small">{{ pos[e.to].label if e.to in pos else e.to }}</td>
+    </tr>
+  {% endfor %}
+  </tbody></table>
+</div>
+{% endblock %}

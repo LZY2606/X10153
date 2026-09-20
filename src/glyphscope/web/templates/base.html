@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}字形子集检查站{% endblock %}</title>
+<style>
+:root {
+  --bg:#f6f7f9; --panel:#ffffff; --ink:#1f2937; --muted:#6b7280;
+  --line:#e5e7eb; --brand:#1d4ed8; --brand-soft:#dbeafe;
+  --danger:#b91c1c; --danger-soft:#fee2e2; --ok:#15803d; --ok-soft:#dcfce7;
+  --warn:#b45309; --warn-soft:#fef3c7;
+}
+* { box-sizing:border-box; }
+body { margin:0; font-family:-apple-system,"PingFang SC","Microsoft YaHei",Segoe UI,sans-serif;
+  background:var(--bg); color:var(--ink); line-height:1.55; }
+header.top { background:#0f172a; color:#fff; padding:14px 24px; display:flex; align-items:center; gap:20px; }
+header.top h1 { font-size:18px; margin:0; font-weight:650; }
+header.top nav a { color:#cbd5e1; text-decoration:none; margin-right:16px; font-size:14px; }
+header.top nav a:hover { color:#fff; }
+main { max-width:1180px; margin:24px auto; padding:0 20px 60px; }
+.panel { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:18px 20px; margin-bottom:18px; }
+.panel h2 { font-size:16px; margin:0 0 12px; }
+.panel h3 { font-size:14px; margin:16px 0 8px; }
+.muted { color:var(--muted); font-size:13px; }
+table { border-collapse:collapse; width:100%; font-size:13px; }
+th,td { border-bottom:1px solid var(--line); padding:7px 9px; text-align:left; vertical-align:top; }
+th { background:#f8fafc; font-weight:600; }
+tr:hover td { background:#fafbff; }
+code,.mono { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:12px; }
+.btn,button.btn { display:inline-block; background:var(--brand); color:#fff; border:0; border-radius:7px;
+  padding:8px 14px; font-size:14px; text-decoration:none; cursor:pointer; }
+.btn.secondary { background:#475569; }
+.btn.ghost { background:#fff; color:var(--brand); border:1px solid var(--brand); }
+.tag { display:inline-block; border-radius:999px; padding:1px 9px; font-size:12px; background:#eef2ff; color:#3730a3; }
+.tag.ok { background:var(--ok-soft); color:var(--ok); }
+.tag.bad { background:var(--danger-soft); color:var(--danger); }
+.tag.warn { background:var(--warn-soft); color:var(--warn); }
+.flash { border-radius:8px; padding:10px 14px; margin-bottom:14px; font-size:14px; }
+.flash.ok { background:var(--ok-soft); color:var(--ok); }
+.flash.error { background:var(--danger-soft); color:var(--danger); }
+.grid2 { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+input[type=text],textarea,select { width:100%; border:1px solid #cbd5e1; border-radius:7px;
+  padding:8px 10px; font-size:14px; font-family:inherit; }
+textarea { min-height:130px; }
+label.checkbox { display:inline-block; margin:3px 10px 3px 0; font-size:13px; }
+.preview-svg { background:#fff; border:1px solid var(--line); border-radius:8px; margin:6px 0; max-width:100%; height:auto; }
+.cell-label { font:10px ui-monospace,monospace; fill:#374151; }
+.cell-badge { font:10px ui-monospace,monospace; fill:#1d4ed8; font-weight:700; }
+.cell-box.missing { fill:none; stroke:var(--danger); stroke-width:2; }
+.cell-box.notdef-box { fill:none; stroke:var(--warn); stroke-width:2; stroke-dasharray:5 4; }
+.cell-box.alt { fill:none; stroke:var(--brand); stroke-width:1.5; }
+.missing-x { font:bold 18px sans-serif; fill:var(--danger); }
+.origin-kind { font-size:11px; border-radius:5px; padding:0 6px; background:#f1f5f9; margin-right:4px; white-space:nowrap; }
+.origin-kind.character { background:#dcfce7; color:#166534; }
+.origin-kind.variation { background:#fef9c3; color:#854d0e; }
+.origin-kind.combining { background:#f3e8ff; color:#6b21a8; }
+.origin-kind.layout { background:#dbeafe; color:#1e40af; }
+.origin-kind.component { background:#f1f5f9; color:#334155; }
+.origin-kind.closure { background:#ffedd5; color:#9a3412; }
+.origin-kind.required { background:#e2e8f0; color:#334155; }
+.origin-kind.mapped_notdef { background:#fef3c7; color:#92400e; }
+ul.tight { margin:4px 0; padding-left:18px; }
+ul.tight li { margin:2px 0; }
+.graph-svg { background:#fff; border:1px solid var(--line); border-radius:8px; width:100%; height:auto; }
+.small { font-size:12px; }
+.right { text-align:right; }
+.pill-row .tag { margin:2px; }
+</style>
+</head>
+<body>
+<header class="top">
+  <h1>字形子集检查站</h1>
+  <nav>
+    <a href="{{ url_for('index') }}">首页</a>
+    <a href="{{ url_for('plan_new') }}">新建计划</a>
+    <a href="{{ url_for('compare') }}">计划对比</a>
+  </nav>
+</header>
+<main>
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for category, msg in messages %}
+      <div class="flash {{ category }}">{{ msg }}</div>
+    {% endfor %}
+  {% endwith %}
+  {% block content %}{% endblock %}
+</main>
+</body>
+</html>
