@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>字形子集检查站</title>
+<link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">字形子集检查站</div>
+  <div class="sub">GlyphScope · 离线 glyph 依赖追溯与子集计划</div>
+</header>
+
+<main class="layout">
+  <section class="panel" id="upload-panel">
+    <h2>1. 上传字体</h2>
+    <div class="row">
+      <input type="file" id="font-file" accept=".ttf">
+      <button id="upload-btn">上传并解析</button>
+      <button id="demo-btn" class="secondary">载入演示夹具</button>
+    </div>
+    <div id="upload-status" class="status"></div>
+    <div id="quarantine-box" class="quarantine hidden"></div>
+  </section>
+
+  <section class="panel hidden" id="font-panel">
+    <h2>2. 字体表摘要</h2>
+    <div id="font-summary"></div>
+    <details>
+      <summary>名称与许可证元数据</summary>
+      <pre id="name-meta"></pre>
+    </details>
+    <details>
+      <summary>表目录</summary>
+      <table class="data" id="table-list">
+        <thead><tr><th>tag</th><th>offset</th><th>length</th>
+        <th>checksum</th><th>校验</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </details>
+    <details>
+      <summary>布局特性</summary>
+      <div id="feature-list"></div>
+    </details>
+  </section>
+
+  <section class="panel hidden" id="sample-panel">
+    <h2>3. 输入文本样本与策略</h2>
+    <div id="samples"></div>
+    <button class="secondary" id="add-sample">+ 添加样本</button>
+    <div class="strategy">
+      <label>特性纳入策略
+        <select id="feature-policy">
+          <option value="closure">closure（保留特性所需的相关 glyph）</option>
+          <option value="base">base（仅样本直接触发，保留特性表）</option>
+          <option value="none">none（不保留布局特性）</option>
+        </select>
+      </label>
+      <div id="feature-toggles" class="toggles"></div>
+      <label class="chk"><input type="checkbox" id="include-notdef">
+        显式纳入 .notdef</label>
+      <label class="chk"><input type="checkbox" id="plan-only">
+        只生成计划（暂不导出字体）</label>
+    </div>
+    <div class="row">
+      <button id="plan-btn">生成子集计划</button>
+    </div>
+    <div id="plan-status" class="status"></div>
+  </section>
+
+  <section class="panel hidden" id="result-panel">
+    <h2>4. 计划结果</h2>
+    <div id="plan-meta" class="plan-meta"></div>
+    <div class="row wrap">
+      <button id="download-font">下载子集 TTF</button>
+      <button id="download-json" class="secondary">下载计划 JSON</button>
+      <select id="version-select"></select>
+      <button id="load-version" class="secondary">载入该版本</button>
+    </div>
+    <div id="export-info" class="muted"></div>
+
+    <h3>本地预览（缺失/.notdef/连字/替代）</h3>
+    <div id="preview"></div>
+
+    <h3>候选 glyph 列表（确定性 gid 排序）</h3>
+    <div class="table-wrap">
+      <table class="data" id="glyph-table">
+        <thead><tr><th>gid</th><th>预览</th><th>名称</th>
+        <th>纳入来源</th><th>触发追溯</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <h3>字符 → glyph 关系图</h3>
+    <div class="graph-wrap"><svg id="graph" width="100%" height="420"></svg></div>
+  </section>
+
+  <section class="panel hidden" id="compare-panel">
+    <h2>5. 对比两个计划</h2>
+    <div class="row wrap">
+      <select id="cmp-a"></select>
+      <select id="cmp-b"></select>
+      <button id="cmp-btn" class="secondary">对比</button>
+    </div>
+    <div id="cmp-result"></div>
+  </section>
+</main>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

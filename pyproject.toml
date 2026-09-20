@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "glyphscope"
+version = "1.0.0"
+description = "字形子集检查站：字体 glyph 依赖追溯、子集计划版本化与离线子集导出"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "GlyphScope" }]
+dependencies = []
+
+[project.optional-dependencies]
+test = ["pytest>=7.0"]
+
+[project.scripts]
+glyphscope = "glyphscope.__main__:main"
+
+[tool.setuptools.packages.find]
+include = ["glyphscope*"]
+
+[tool.setuptools.package-data]
+glyphscope = ["web/static/*"]

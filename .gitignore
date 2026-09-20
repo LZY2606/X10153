@@ -34,3 +34,7 @@ coverage/
 .vite/
 .turbo/
 *.tsbuildinfo
+
+# 本地数据与打包元数据
+.glyphscope/
+*.egg-info/
